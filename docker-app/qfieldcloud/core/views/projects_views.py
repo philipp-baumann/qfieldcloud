@@ -11,33 +11,35 @@ User = get_user_model()
 
 
 class ProjectViewSetPermissions(permissions.BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if view.action == "retrieve":
+            # The queryset is already filtered by what the user can see
+            return True
+
+        if view.action == "destroy":
+            return obj.user_role in permissions_utils.ROLES_CAN_DELETE_PROJECT
+
+        if view.action in ["update", "partial_update"]:
+            return obj.user_role in permissions_utils.ROLES_CAN_UPDATE_PROJECT
+
+        raise Exception(f"Unknown object action : {view.action}")
+
     def has_permission(self, request, view):
         if view.action == "list":
             # The queryset is already filtered by what the user can see
             return True
-        user = request.user
-        owner = permissions_utils.get_param_from_request(request, "owner")
-        if owner:
-            owner_obj = User.objects.get(username=owner)
-        else:
-            # If the owner is not in the request, means that the owner
-            # should be the user that made the request
-            owner_obj = user
 
         if view.action == "create":
+            user = request.user
+            owner = permissions_utils.get_param_from_request(request, "owner")
+            owner_obj = User.objects.get(username=owner) if owner else user
             return permissions_utils.can_create_project(user, owner_obj)
 
-        projectid = permissions_utils.get_param_from_request(request, "projectid")
-        project = Project.objects.get(id=projectid)
+        if view.action in ["retrieve", "destroy", "update", "partial_update"]:
+            # These are checked at object level
+            return True
 
-        if view.action == "retrieve":
-            return permissions_utils.can_read_project(user, project)
-        elif view.action == "destroy":
-            return permissions_utils.can_delete_project(user, project)
-        elif view.action in ["update", "partial_update"]:
-            return permissions_utils.can_update_project(user, project)
-
-        return False
+        raise Exception(f"Unknown view action : {view.action}")
 
 
 include_public_param = openapi.Parameter(

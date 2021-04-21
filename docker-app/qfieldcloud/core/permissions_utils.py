@@ -1,3 +1,4 @@
+import warnings
 from typing import List, Union
 
 from qfieldcloud.core.models import (
@@ -83,7 +84,21 @@ def can_read_project(user: QfcUser, project: Project) -> bool:
     )
 
 
+ROLES_CAN_UPDATE_PROJECT = [
+    ProjectCollaborator.Roles.ADMIN,
+    ProjectCollaborator.Roles.MANAGER,
+]
+ROLES_CAN_DELETE_PROJECT = [
+    ProjectCollaborator.Roles.ADMIN,
+    ProjectCollaborator.Roles.MANAGER,
+]
+
+
 def can_update_project(user: QfcUser, project: Project) -> bool:
+    warnings.warn(
+        DeprecationWarning,
+        "can_update_project is deprecated, use `project.user_role in ROLES_CAN_UPDATE_PROJECT` instead",
+    )
     return user_has_project_roles(
         user,
         project,
@@ -95,6 +110,10 @@ def can_update_project(user: QfcUser, project: Project) -> bool:
 
 
 def can_delete_project(user: QfcUser, project: Project) -> bool:
+    warnings.warn(
+        DeprecationWarning,
+        "can_update_project is deprecated, use `project.user_role in ROLES_CAN_DELETE_PROJECT` instead",
+    )
     return user_has_project_roles(
         user,
         project,
