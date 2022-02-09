@@ -3,6 +3,7 @@ import time
 
 from allauth.socialaccount.models import SocialAccount, SocialApp, SocialToken
 from django.contrib import admin, messages
+from django.contrib.admin import register
 from django.contrib.admin.templatetags.admin_urls import admin_urlname
 from django.contrib.auth.models import Group
 from django.db.models.fields.json import JSONField
@@ -195,6 +196,7 @@ class UserProjectCollaboratorInline(admin.TabularInline):
         return obj.user_type == User.TYPE_USER
 
 
+@register(User)
 class UserAdmin(admin.ModelAdmin):
     list_display = (
         "username",
@@ -259,6 +261,7 @@ class ProjectCollaboratorInline(admin.TabularInline):
     extra = 0
 
 
+@register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -304,6 +307,7 @@ class DeltaInline(admin.TabularInline):
     #     return format_pre_json(instance.feedback)
 
 
+@register(ApplyJob)
 class ApplyJobAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -380,6 +384,7 @@ class ApplyJobDeltaInline(admin.TabularInline):
         return False
 
 
+@register(Delta)
 class DeltaAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -489,6 +494,7 @@ class DeltaAdmin(admin.ModelAdmin):
         return super().response_change(request, delta)
 
 
+@register(PackageJob)
 class PackageJobAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -547,6 +553,7 @@ class PackageJobAdmin(admin.ModelAdmin):
         return False
 
 
+@register(ProcessProjectfileJob)
 class ProcessProjectfileJobAdmin(admin.ModelAdmin):
     list_display = (
         "id",
@@ -605,6 +612,7 @@ class ProcessProjectfileJobAdmin(admin.ModelAdmin):
         return False
 
 
+@register(Geodb)
 class GeodbAdmin(admin.ModelAdmin):
     list_filter = ("created_at", "hostname")
     list_display = (
@@ -671,6 +679,7 @@ class TeamInline(admin.TabularInline):
         return False
 
 
+@register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     inlines = (
         UserAccountInline,
@@ -711,6 +720,7 @@ class TeamMemberInline(admin.TabularInline):
     extra = 0
 
 
+@register(Team)
 class TeamAdmin(admin.ModelAdmin):
     inlines = (TeamMemberInline,)
 
@@ -733,16 +743,6 @@ class TeamAdmin(admin.ModelAdmin):
             obj.username = f"@{obj.team_organization.username}/{obj.username}"
         obj.save()
 
-
-admin.site.register(User, UserAdmin)
-admin.site.register(Organization, OrganizationAdmin)
-admin.site.register(Team, TeamAdmin)
-admin.site.register(Project, ProjectAdmin)
-admin.site.register(Delta, DeltaAdmin)
-admin.site.register(ApplyJob, ApplyJobAdmin)
-admin.site.register(PackageJob, PackageJobAdmin)
-admin.site.register(ProcessProjectfileJob, ProcessProjectfileJobAdmin)
-admin.site.register(Geodb, GeodbAdmin)
 
 admin.site.unregister(Group)
 admin.site.unregister(SocialAccount)
