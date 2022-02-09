@@ -252,6 +252,7 @@ class QFieldCloudUserManager(UserManager):
 
 
 # TODO change types to Enum
+@auditlog.register()
 class User(AbstractUser):
     """User model. Used as base for organizations and teams too.
 
@@ -370,6 +371,7 @@ class User(AbstractUser):
         super().delete(*args, **kwargs)
 
 
+@auditlog.register()
 class UserAccount(models.Model):
     TYPE_COMMUNITY = 1
     TYPE_PRO = 2
@@ -582,6 +584,7 @@ class OrganizationManager(UserManager):
         return self.get_queryset().with_roles(user)
 
 
+@auditlog.register()
 class Organization(User):
     objects = OrganizationManager()
 
@@ -601,6 +604,7 @@ class Organization(User):
         return super().save(*args, **kwargs)
 
 
+@auditlog.register()
 class OrganizationMember(models.Model):
     class Roles(models.TextChoices):
         ADMIN = "admin", _("Admin")
@@ -639,6 +643,7 @@ class OrganizationMember(models.Model):
         return super().clean()
 
 
+@auditlog.register()
 class Team(User):
 
     team_organization = models.ForeignKey(
@@ -660,6 +665,7 @@ class Team(User):
         return self.username.replace(f"@{self.team_organization.username}/", "")
 
 
+@auditlog.register()
 class TeamMember(models.Model):
     class Roles(models.TextChoices):
         ADMIN = "admin", _("Admin")
@@ -804,6 +810,7 @@ class ProjectQueryset(models.QuerySet):
         return qs
 
 
+@auditlog.register()
 class Project(models.Model):
     """Represent a QFieldcloud project.
     It corresponds to a directory on the file system.
@@ -997,6 +1004,7 @@ class Project(models.Model):
         super().delete(*args, **kwargs)
 
 
+@auditlog.register()
 class ProjectCollaborator(models.Model):
     class Roles(models.TextChoices):
         ADMIN = "admin", _("Admin")
@@ -1055,6 +1063,7 @@ class ProjectCollaborator(models.Model):
         return super().clean()
 
 
+@auditlog.register()
 class Delta(models.Model):
     class Method(Enum):
         Create = "create"
@@ -1173,6 +1182,7 @@ class Job(models.Model):
         return str(self.id)[0:8]
 
 
+@auditlog.register()
 class PackageJob(Job):
     def save(self, *args, **kwargs):
         self.type = self.Type.PACKAGE
@@ -1183,6 +1193,7 @@ class PackageJob(Job):
         verbose_name_plural = "Jobs: package"
 
 
+@auditlog.register()
 class ProcessProjectfileJob(Job):
     def save(self, *args, **kwargs):
         self.type = self.Type.PROCESS_PROJECTFILE
@@ -1193,6 +1204,7 @@ class ProcessProjectfileJob(Job):
         verbose_name_plural = "Jobs: process QGIS project file"
 
 
+@auditlog.register()
 class ApplyJob(Job):
 
     deltas_to_apply = models.ManyToManyField(
@@ -1226,17 +1238,3 @@ class ApplyJobDelta(models.Model):
 
     def __str__(self):
         return f"{self.apply_job_id}:{self.delta_id}"
-
-
-auditlog.register(User)
-auditlog.register(UserAccount)
-auditlog.register(Organization)
-auditlog.register(OrganizationMember)
-auditlog.register(Team)
-auditlog.register(TeamMember)
-auditlog.register(Project)
-auditlog.register(ProjectCollaborator)
-auditlog.register(Delta)
-auditlog.register(ProcessProjectfileJob)
-auditlog.register(PackageJob)
-auditlog.register(ApplyJob)
