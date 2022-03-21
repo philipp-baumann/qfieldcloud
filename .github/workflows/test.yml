@@ -37,7 +37,7 @@ jobs:
           docker-compose up -d --build
       - name: Run unit and integration tests
         run: |
-          docker-compose run app python manage.py test -v2 qfieldcloud
+          docker-compose run app python manage.py test --noinput --keepdb -v2 qfieldcloud.authentication.tests.test_authentication.QfcTestCase
 
       - name: "failure logs"
         if: failure()
