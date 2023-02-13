@@ -1,6 +1,14 @@
 from rest_framework import status
 
 
+class QfcError(Exception):
+    ...
+
+
+class IntegrationError(QfcError):
+    ...
+
+
 class QFieldCloudException(Exception):
     """Generic QFieldCloud Exception"""
 
@@ -47,6 +55,14 @@ class NotAuthenticatedError(QFieldCloudException):
     code = "not_authenticated"
     message = "Not authenticated"
     status_code = status.HTTP_401_UNAUTHORIZED
+
+
+class PermissionDeniedError(QFieldCloudException):
+    """Raised when the user has not the required permission for an action."""
+
+    code = "permission_denied"
+    message = "Permission denied"
+    status_code = status.HTTP_403_FORBIDDEN
 
 
 class EmptyContentError(QFieldCloudException):

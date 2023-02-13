@@ -13,11 +13,17 @@ from qfieldcloud.core.geodb_utils import delete_db_and_role
 from qfieldcloud.core.models import (
     Geodb,
     Job,
+    Organization,
+    OrganizationMember,
+    PackageJob,
+    Person,
     Project,
     ProjectCollaborator,
     Secret,
-    User,
+    Team,
+    TeamMember,
 )
+from qfieldcloud.core.utils2.storage import get_stored_package_ids
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
 
@@ -31,7 +37,7 @@ class QfcTestCase(APITransactionTestCase):
         setup_subscription_plans()
 
         # Create a user
-        self.user1 = User.objects.create_user(username="user1", password="abc123")
+        self.user1 = Person.objects.create_user(username="user1", password="abc123")
         self.token1 = AuthToken.objects.get_or_create(user=self.user1)[0]
 
         # Create a project
@@ -596,13 +602,13 @@ class QfcTestCase(APITransactionTestCase):
         )
 
         for idx, role in enumerate(ProjectCollaborator.Roles):
-            reader = User.objects.create(username=f"user_with_role_{idx}")
+            u1 = Person.objects.create(username=f"user_with_role_{idx}")
             ProjectCollaborator.objects.create(
-                collaborator=reader, project=self.project1, role=role
+                collaborator=u1, project=self.project1, role=role
             )
 
             self.check_package(
-                token=AuthToken.objects.get_or_create(user=reader)[0],
+                token=AuthToken.objects.get_or_create(user=u1)[0],
                 project=self.project1,
                 expected_files=[
                     "data.gpkg",
@@ -610,3 +616,95 @@ class QfcTestCase(APITransactionTestCase):
                     "project_qfield_attachments.zip",
                 ],
             )
+
+    def test_collaborator_via_team_can_package(self):
+        u1 = Person.objects.create(username="u1")
+        o1 = Organization.objects.create(username="o1", organization_owner=u1)
+        p1 = Project.objects.create(
+            name="p1",
+            owner=o1,
+        )
+        token_u1 = AuthToken.objects.get_or_create(user=u1)[0]
+
+        self.upload_files(
+            token=token_u1,
+            project=p1,
+            files=[
+                ("delta/nonspatial.csv", "nonspatial.csv"),
+                ("delta/testdata.gpkg", "testdata.gpkg"),
+                ("delta/points.geojson", "points.geojson"),
+                ("delta/polygons.geojson", "polygons.geojson"),
+                ("delta/project.qgs", "project.qgs"),
+            ],
+        )
+
+        for idx, role in enumerate(ProjectCollaborator.Roles):
+            team = Team.objects.create(
+                username=f"@{o1.username}/team_{idx}", team_organization=o1
+            )
+            team_user = Person.objects.create(username=f"team_user_{idx}")
+
+            OrganizationMember.objects.create(member=team_user, organization=o1)
+            TeamMember.objects.create(member=team_user, team=team)
+            ProjectCollaborator.objects.create(collaborator=team, project=p1, role=role)
+
+            self.check_package(
+                token=AuthToken.objects.get_or_create(user=team_user)[0],
+                project=p1,
+                expected_files=[
+                    "data.gpkg",
+                    "project_qfield.qgs",
+                    "project_qfield_attachments.zip",
+                ],
+            )
+
+    def test_outdated_packaged_files_are_deleted(self):
+        cur = self.conn.cursor()
+        cur.execute("CREATE TABLE point (id integer, geometry geometry(point, 2056))")
+        self.conn.commit()
+        cur.execute(
+            "INSERT INTO point(id, geometry) VALUES(1, ST_GeomFromText('POINT(2725505 1121435)', 2056))"
+        )
+        self.conn.commit()
+
+        self.upload_files_and_check_package(
+            token=self.token1.key,
+            project=self.project1,
+            files=[
+                ("delta/project2.qgs", "project.qgs"),
+                ("delta/points.geojson", "points.geojson"),
+            ],
+            expected_files=[
+                "data.gpkg",
+                "project_qfield.qgs",
+                "project_qfield_attachments.zip",
+            ],
+        )
+
+        old_package = PackageJob.objects.filter(project=self.project1).latest(
+            "created_at"
+        )
+        stored_package_ids = get_stored_package_ids(self.project1.id)
+        self.assertIn(str(old_package.id), stored_package_ids)
+        self.assertEqual(len(stored_package_ids), 1)
+
+        self.check_package(
+            self.token1.key,
+            self.project1,
+            [
+                "data.gpkg",
+                "project_qfield.qgs",
+                "project_qfield_attachments.zip",
+            ],
+        )
+
+        new_package = PackageJob.objects.filter(project=self.project1).latest(
+            "created_at"
+        )
+
+        stored_package_ids = get_stored_package_ids(self.project1.id)
+
+        self.assertNotEqual(old_package.id, new_package.id)
+        self.assertNotIn(str(old_package.id), stored_package_ids)
+        self.assertIn(str(new_package.id), stored_package_ids)
+        self.assertEqual(len(stored_package_ids), 1)

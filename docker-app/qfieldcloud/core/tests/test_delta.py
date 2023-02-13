@@ -12,9 +12,9 @@ from qfieldcloud.core.models import (
     Job,
     Organization,
     OrganizationMember,
+    Person,
     Project,
     ProjectCollaborator,
-    User,
 )
 from rest_framework import status
 from rest_framework.test import APITransactionTestCase
@@ -29,11 +29,11 @@ class QfcTestCase(APITransactionTestCase):
         setup_subscription_plans()
 
         # Create a user
-        self.user1 = User.objects.create_user(username="user1", password="abc123")
+        self.user1 = Person.objects.create_user(username="user1", password="abc123")
         self.user1.save()
-        self.user2 = User.objects.create_user(username="user2", password="abc123")
+        self.user2 = Person.objects.create_user(username="user2", password="abc123")
         self.user2.save()
-        self.user3 = User.objects.create_user(username="user3", password="abc123")
+        self.user3 = Person.objects.create_user(username="user3", password="abc123")
         self.user3.save()
 
         self.token1 = AuthToken.objects.get_or_create(user=self.user1)[0]
@@ -172,6 +172,28 @@ class QfcTestCase(APITransactionTestCase):
             final_values=[
                 [
                     "c8c421cd-e39c-40a0-97d8-a319c245ba14",
+                    "STATUS_APPLIED",
+                    self.user1.username,
+                ]
+            ],
+        )
+
+        gpkg = io.BytesIO(self.get_file_contents(project, "testdata.gpkg"))
+        with fiona.open(gpkg, layer="points") as layer:
+            features = list(layer)
+            self.assertEqual(666, features[0]["properties"]["int"])
+
+    def test_push_apply_delta_file_empty_source_layer_id(self):
+        self.client.credentials(HTTP_AUTHORIZATION="Token " + self.token1.key)
+        project = self.upload_project_files(self.project1)
+
+        self.upload_and_check_deltas(
+            project=project,
+            delta_filename="singlelayer_singledelta_empty_source_layer_id.json",
+            token=self.token1.key,
+            final_values=[
+                [
+                    "9311eb96-bff8-4d5b-ab36-c314a007cfcd",
                     "STATUS_APPLIED",
                     self.user1.username,
                 ]

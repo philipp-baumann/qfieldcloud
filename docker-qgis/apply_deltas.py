@@ -37,8 +37,6 @@ from qgis.core import (
 )
 from qgis.PyQt.QtCore import QCoreApplication
 
-logging.basicConfig(level=logging.DEBUG)
-
 logger = logging.getLogger(__name__)
 # /LOGGER
 
@@ -375,6 +373,17 @@ def delta_file_file_loader(args: DeltaOptions) -> Optional[DeltaFile]:
             obj["files"],
             obj["clientPks"],
         )
+
+        # NOTE Sometimes QField does not fill the `sourceLayerId` field
+        # In recent QGIS versions, offline editing replaces the data source of the layers, so the layer ids do not change
+        # See https://github.com/opengisch/qfieldcloud/issues/415#issuecomment-1322922349
+        for delta in delta_file.deltas:
+            if delta["sourceLayerId"] == "" and delta["localLayerId"] != "":
+                delta["sourceLayerId"] = delta["localLayerId"]
+                logger.warning(
+                    "Patching project %s delta's empty sourceLayerId from localLayerId",
+                    delta_file.project_id,
+                )
 
     return delta_file
 
@@ -1262,6 +1271,10 @@ def inverse_delta(delta: Delta) -> Delta:
 
 
 if __name__ == "__main__":
+    from qfieldcloud.qgis.utils import setup_basic_logging_config
+
+    setup_basic_logging_config()
+
     parser = argparse.ArgumentParser(
         prog="COMMAND",
         description="",
